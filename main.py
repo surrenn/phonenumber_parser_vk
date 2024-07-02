@@ -3,8 +3,12 @@ from selenium.webdriver.common.keys import Keys
 from fake_useragent import UserAgent
 import time
 import pickle
+import logging
 
 url = 'https://vk.com'
+
+#logging
+logging.basicConfig(filename="error_log.txt", level=logging.ERROR)
 
 # useragent = UserAgent()
 
@@ -27,7 +31,7 @@ driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
     })
 
 #vk links
-with open('vk_links\\test.txt') as file:
+with open('vk_links\\user_links.txt') as file:
     links = [item.strip() for item in file]
     
 try:
@@ -99,6 +103,12 @@ try:
 except Exception as ex:
     print(f"ERROR ON {counter} LINE")
     print(ex)
+
+    logging.error(ex, exc_info=True)
+    with open ("error_log.txt", "a") as f:
+        f.write(f"ERROR ON {counter} LINE")
+
+        
 finally:
     driver.close()
     driver.quit()
