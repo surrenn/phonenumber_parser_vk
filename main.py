@@ -17,7 +17,7 @@ options = webdriver.ChromeOptions()
 options.add_argument(f"user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0")
 
 #headless mode
-options.add_argument("--headless")
+# options.add_argument("--headless")
 
 driver = webdriver.Chrome(options=options)
 
@@ -35,7 +35,7 @@ with open('vk_links\\user_links.txt') as file:
     links = [item.strip() for item in file]
     
 try:
-    # driver.maximize_window()
+    driver.maximize_window()
     driver.get(url)
     driver.implicitly_wait(10)
     # time.sleep(5)
@@ -63,41 +63,76 @@ try:
     # go to page
     print("Starting parcing..")
     counter = 0
+    break_out_flag = False
 
     print(f"Всего {len(links)} строк")
     print("===============================")
     for link in links:
         counter += 1
+        flag = True
+        error_counter = 0
 
-        driver.get(link)
-        driver.implicitly_wait(5)
+        while flag:
+            try:
+                driver.get(link)
+                driver.implicitly_wait(3)
 
-        #finding more button
-        more_btn = driver.find_element("xpath", "//span[contains(@class, 'vkuiTypography')][text()='Подробнее']")
-        driver.implicitly_wait(5)
-        # time.sleep(3)
+                delete_acc = driver.find_elements("xpath", "//div[text()='Страница удалена её владельцем.']")
 
-        more_btn.click()
-        driver.implicitly_wait(1)
+                frozen_acc = driver.find_elements("xpath", "//div[@class='Placeholder-module__text--nWdeX']")
 
-        #finding phonenumber
-        phonenumber = driver.find_elements("xpath", "//div[@class='ProfileModalInfoRow__label'][text()='Моб. телефон:']/following::div[@class='ProfileModalInfoRow__in'][1]")
+                if len(delete_acc) != 0 or len(frozen_acc) != 0:
+                    print(f"Строка {counter} не найдено номеров!")
+                    break
 
-        additional_phonenumber = driver.find_elements("xpath", "//div[@class='ProfileModalInfoRow__label'][text()='Доп. телефон:']/following::div[@class='ProfileModalInfoRow__in'][1]")
+                #finding more button
+                more_btn = driver.find_element("xpath", "//span[contains(@class, 'vkuiTypography')][text()='Подробнее']")
+                # time.sleep(3)
 
-        if len(phonenumber) == 0 and len(additional_phonenumber) == 0:
-            print(f"Строка {counter} не найдено номеров!")
-            continue
-        else:
-            print(f"Строка {counter} найден номер:")
-            if len(phonenumber) != 0:
-                print(f"Номер телефона: {phonenumber[0].text}")
-                with open ("new_numbers.txt", "a") as f:
-                    f.write(phonenumber[0].text + '\n')
-            if len(additional_phonenumber) != 0:
-                print(f"Дополнительный номер телефона: {additional_phonenumber[0].text}")
-                with open ("new_numbers.txt", "a") as f:
-                    f.write(additional_phonenumber[0].text + '\n')
+                more_btn.click()
+                driver.implicitly_wait(1)
+
+                #finding phonenumber
+                phonenumber = driver.find_elements("xpath", "//div[@class='ProfileModalInfoRow__label'][text()='Моб. телефон:']/following::div[@class='ProfileModalInfoRow__in'][1]")
+
+                additional_phonenumber = driver.find_elements("xpath", "//div[@class='ProfileModalInfoRow__label'][text()='Доп. телефон:']/following::div[@class='ProfileModalInfoRow__in'][1]")
+
+                if len(phonenumber) == 0 and len(additional_phonenumber) == 0:
+                    print(f"Строка {counter} не найдено номеров!")
+                    flag = False
+                else:
+                    print(f"Строка {counter} найден номер:")
+                    if len(phonenumber) != 0:
+                        print(f"Номер телефона: {phonenumber[0].text}")
+                        with open ("new_numbers.txt", "a") as f:
+                            f.write(phonenumber[0].text + '\n')
+                        
+                        flag = False
+                    if len(additional_phonenumber) != 0:
+                        print(f"Дополнительный номер телефона: {additional_phonenumber[0].text}")
+                        with open ("new_numbers.txt", "a") as f:
+                            f.write(additional_phonenumber[0].text + '\n')
+
+                        flag = False
+            except Exception as exc:
+
+                if error_counter == 5:
+                    print(f"Произошло {error_counter} ошибок, работа остановлена на {counter} строке")
+
+                    logging.error(exc, exc_info=True)
+                    with open ("error_log.txt", "a") as f:
+                        f.write(f"ERROR ON {counter} LINE")
+
+                    break_out_flag = True
+                    break
+
+                error_counter += 1
+                print("An error occured, try again")
+                time.sleep(2)
+
+        if break_out_flag:
+            break
+
     print("DONE!")
 
 except Exception as ex:
@@ -108,7 +143,6 @@ except Exception as ex:
     with open ("error_log.txt", "a") as f:
         f.write(f"ERROR ON {counter} LINE")
 
-        
 finally:
     driver.close()
     driver.quit()
